@@ -1,21 +1,27 @@
-from typing import cast
+from typing import cast, List, Dict, Tuple, Optional, Union, Any
+import attr
+
 from mlagents.torch_utils import torch, nn, default_device
-from mlagents.trainers.optimizer.torch_optimizer import TorchOptimizer
-from mlagents.trainers.policy.torch_policy import TorchPolicy
+
 from mlagents.trainers.buffer import AgentBuffer, BufferKey, RewardSignalUtil
+
 from mlagents_envs.timers import timed
-from typing import List, Dict, Tuple, Optional, Union, Any
+from mlagents.trainers.policy.torch_policy import TorchPolicy
+from mlagents.trainers.optimizer.torch_optimizer import TorchOptimizer
+from mlagents.trainers.settings import (
+    TrainerSettings,
+    OffPolicyHyperparamSettings,
+    ScheduleType,
+    NetworkSettings,
+)
 from mlagents.trainers.torch_entities.networks import ValueNetwork, Actor
-from mlagents_envs.base_env import ActionSpec, ObservationSpec
 from mlagents.trainers.torch_entities.agent_action import AgentAction
 from mlagents.trainers.torch_entities.utils import ModelUtils
 from mlagents.trainers.trajectory import ObsUtil
-from mlagents.trainers.settings import TrainerSettings, OffPolicyHyperparamSettings
-from mlagents.trainers.settings import ScheduleType, NetworkSettings
+from mlagents_envs.base_env import ActionSpec, ObservationSpec
 
 from mlagents.trainers.torch_entities.networks import Critic
 import numpy as np
-import attr
 
 
 # TODO: fix saving to onnx
