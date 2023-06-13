@@ -169,7 +169,7 @@ class A2CTrainer(OnPolicyTrainer):
         self, parsed_behavior_id: BehaviorIdentifiers, behavior_spec: BehaviorSpec
     ) -> TorchPolicy:
         """
-        Creates a policy with a PyTorch backend and PPO hyperparameters
+        Creates a policy with a PyTorch backend and A2C hyperparameters
         :param parsed_behavior_id:
         :param behavior_spec: specifications for policy construction
         :return policy

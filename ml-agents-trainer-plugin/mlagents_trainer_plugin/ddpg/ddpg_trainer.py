@@ -13,6 +13,8 @@ from mlagents_envs.base_env import BehaviorSpec
 from mlagents.trainers.settings import TrainerSettings
 from .ddpg_optimizer import DDPGOptimizer, DDPGSettings
 
+from mlagents.trainers.torch_entities.networks import SimpleActor, SharedActorCritic
+
 logger = get_logger(__name__)
 TRAINER_NAME = "ddpg"
 
@@ -57,6 +59,7 @@ class DDPGTrainer(OffPolicyTrainer):
         Takes a trajectory and processes it, putting it into the replay buffer.
         """
         super()._process_trajectory(trajectory)
+        last_step = trajectory.steps[-1]
         agent_id = trajectory.agent_id
 
         agent_buffer_trajectory = trajectory.to_agentbuffer()
@@ -78,6 +81,31 @@ class DDPGTrainer(OffPolicyTrainer):
 
             # Report the reward signals
             self.collected_rewards[name][agent_id] += np.sum(evaluate_result)
+
+        # Get all value estimates for reporting purposes
+        (
+            value_estimates,
+            _,
+            value_memories,
+        ) = self.optimizer.get_trajectory_value_estimates(
+            agent_buffer_trajectory, trajectory.next_obs, trajectory.done_reached
+        )
+        if value_memories is not None:
+            agent_buffer_trajectory[BufferKey.CRITIC_MEMORY].set(value_memories)
+
+        for name, v in value_estimates.items():
+            self._stats_reporter.add_stat(
+                f"Policy/{self.optimizer.reward_signals[name].name.capitalize()} Value",
+                np.mean(v),
+            )
+
+        # Bootstrap using the last step rather than the bootstrap step if max step is reached.
+        # Set last element to duplicate obs and remove dones.
+        if last_step.interrupted:
+            last_step_obs = last_step.obs
+            for i, obs in enumerate(last_step_obs):
+                agent_buffer_trajectory[ObsUtil.get_name_at_next(i)][-1] = obs
+            agent_buffer_trajectory[BufferKey.DONE][-1] = False
 
         self._append_to_update_buffer(agent_buffer_trajectory)
 
@@ -101,11 +129,22 @@ class DDPGTrainer(OffPolicyTrainer):
         :param behavior_spec: specifications for policy construction
         :return policy
         """
+        actor_cls = SimpleActor
+        actor_kwargs = {"conditional_sigma": False, "tanh_squash": False}
+        if self.shared_critic:
+            reward_signal_configs = self.trainer_settings.reward_signals
+            reward_signal_names = [
+                key.value for key, _ in reward_signal_configs.items()
+            ]
+            actor_cls = SharedActorCritic
+            actor_kwargs.update({"stream_names": reward_signal_names})
+
         policy = TorchPolicy(
             self.seed,
             behavior_spec,
             self.trainer_settings.network_settings,
-            parsed_behavior_id=parsed_behavior_id,
+            actor_cls,
+            actor_kwargs,
         )
         self.maybe_load_replay_buffer()
         return policy
