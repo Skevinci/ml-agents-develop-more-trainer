@@ -56,10 +56,8 @@ class DDPGOptimizer(TorchOptimizer):
             self.trainer_settings.max_steps,
         )
 
-        # Actor Network
-        self.actor_optimizer = torch.optim.Adam(
-            params,
-            lr=self.trainer_settings.hyperparameters.learning_rate
+        self.optimizer = torch.optim.Adam(
+            params, lr=self.trainer_settings.hyperparameters.learning_rate
         )
 
         # Critic Network
@@ -124,18 +122,18 @@ class DDPGOptimizer(TorchOptimizer):
         Q_expected = self.critic(current_obs, actions)
         critic_loss = F.mse_loss(Q_expected, Q_targets)
 
-        self.critic_optimizer.zero_grad()
+        self.optimizer.zero_grad()
         critic_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1)
-        self.critic_optimizer.step()
+        self.optimizer.step()
 
         # Actor updation
         actions_pred = self.policy.actor(current_obs)
         actor_loss = -self.critic(current_obs, actions_pred).mean()
 
-        self.actor_optimizer.zero_grad()
+        self.optimizer.zero_grad()
         actor_loss.backward()
-        self.actor_optimizer.step()
+        self.optimizer.step()
 
         # Soft update target networks
         self.soft_update(self.critic, self.critic_target, self.tau)
